@@ -202,7 +202,7 @@ function renderGroups(container, groups) {
         if (confirm(`删除 "${entry.card.word}"?`)) {
           deleteWord(entry.id);
           renderGroups(container, groupByDate(filterByQuery(getWords(), document.getElementById('history-search').value)));
-          renderTodayList();
+          renderLayout();
         }
       });
       li.appendChild(del);

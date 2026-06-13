@@ -24,17 +24,24 @@
       </div>
     </form>
 
-    <section id="card-area" class="card-area hidden"></section>
-
     <section id="error-area" class="error-area hidden">
       <p id="error-message"></p>
       <button id="retry-btn">重试</button>
     </section>
 
-    <section id="today-list" class="today-list hidden">
-      <h2>今天学的</h2>
-      <ul id="today-list-items"></ul>
-    </section>
+    <section id="card-area" class="card-area hidden"></section>
+
+    <div class="layout">
+      <section class="day-list-panel">
+        <h2 id="day-list-title"></h2>
+        <ul id="day-list-items"></ul>
+        <p id="day-list-empty" class="muted hidden">这天还没有单词。</p>
+      </section>
+      <aside class="date-sidebar">
+        <h2>日期</h2>
+        <ul id="date-list"></ul>
+      </aside>
+    </div>
   </main>
 
   <!-- History view -->

@@ -65,3 +65,23 @@ export function updateWordRating(id, rating) {
   getLS().setItem(WORDS_KEY, JSON.stringify(words));
   return words;
 }
+
+// --- date helpers (slice #11) -------------------------------------------
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+export function getDateKey(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+export function getDateKeys(words) {
+  if (!Array.isArray(words) || words.length === 0) return [];
+  const set = new Set(words.map(w => getDateKey(w.addedAt)));
+  return [...set].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+}
+
+export function getWordsByDate(words, dateKey) {
+  if (!Array.isArray(words)) return [];
+  return words.filter(w => getDateKey(w.addedAt) === dateKey);
+}

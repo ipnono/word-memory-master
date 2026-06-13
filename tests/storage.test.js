@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getSettings, setSettings, getWords, addWord, deleteWord, updateWordRating } from '../src/storage.js';
+import { getSettings, setSettings, getWords, addWord, deleteWord, updateWordRating, getDateKey, getDateKeys, getWordsByDate } from '../src/storage.js';
 
 // Minimal localStorage stub — Vitest runs in Node, where localStorage
 // does not exist by default. We attach a fresh mock to globalThis
@@ -119,6 +119,50 @@ describe('storage', () => {
       addWord(e1);
       updateWordRating('nonexistent', 'didnt');
       expect(getWords()).toEqual([e1]);
+    });
+  });
+
+  describe('date helpers (slice #11)', () => {
+    describe('getDateKey', () => {
+      it('formats a timestamp as local "YYYY-MM-DD"', () => {
+        const ts = new Date(2026, 5, 13, 14, 30).getTime();
+        expect(getDateKey(ts)).toBe('2026-06-13');
+      });
+    });
+
+    describe('getDateKeys', () => {
+      const day = (date, h) => new Date(`${date}T${String(h).padStart(2,'0')}:00:00`).getTime();
+      it('returns unique date keys sorted descending', () => {
+        const words = [
+          { id: 'a', addedAt: day('2026-06-13', 10), card: { word: 'a' } },
+          { id: 'b', addedAt: day('2026-06-13', 14), card: { word: 'b' } },
+          { id: 'c', addedAt: day('2026-06-12',  9), card: { word: 'c' } },
+          { id: 'd', addedAt: day('2026-06-10',  9), card: { word: 'd' } },
+        ];
+        expect(getDateKeys(words)).toEqual(['2026-06-13', '2026-06-12', '2026-06-10']);
+      });
+
+      it('returns empty array when no words', () => {
+        expect(getDateKeys([])).toEqual([]);
+      });
+    });
+
+    describe('getWordsByDate', () => {
+      const day = (date, h) => new Date(`${date}T${String(h).padStart(2,'0')}:00:00`).getTime();
+      it('returns only words whose addedAt falls on the given date', () => {
+        const words = [
+          { id: 'a', addedAt: day('2026-06-13', 10), card: { word: 'a' } },
+          { id: 'b', addedAt: day('2026-06-12', 10), card: { word: 'b' } },
+          { id: 'c', addedAt: day('2026-06-13', 14), card: { word: 'c' } },
+        ];
+        const r = getWordsByDate(words, '2026-06-13');
+        expect(r.map(w => w.id).sort()).toEqual(['a', 'c']);
+      });
+
+      it('returns empty array when no words match', () => {
+        const words = [{ id: 'a', addedAt: day('2026-06-13', 10), card: { word: 'a' } }];
+        expect(getWordsByDate(words, '2026-06-14')).toEqual([]);
+      });
     });
   });
 });
