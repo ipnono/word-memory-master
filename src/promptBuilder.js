@@ -2,7 +2,7 @@
 //
 // Slice #2: basic shape — system = promptTemplate, user = "请处理以下单词：{word}".
 // Slice #3: append JSON schema instruction to system.
-// Slice #7: inject history into user when non-empty.
+// Slice #7: inject history block into user when non-empty.
 
 const JSON_SCHEMA_INSTRUCTION = `
 
@@ -31,8 +31,18 @@ const JSON_SCHEMA_INSTRUCTION = `
   "chain":  "<把以往学过的单词串联进一个句子的设计>"
 }`;
 
+function formatHistoryLine(entry) {
+  return entry.coreMeaning ? `${entry.word} (${entry.coreMeaning})` : entry.word;
+}
+
 export function buildMessages({ word, history, isFirstWord, settings }) {
   const system = `${settings.promptTemplate}${JSON_SCHEMA_INSTRUCTION}`;
-  const user = `请处理以下单词：${word}`;
+  let user = `请处理以下单词：${word}`;
+
+  if (!isFirstWord && Array.isArray(history) && history.length > 0) {
+    const lines = history.map(formatHistoryLine).join('\n');
+    user += `\n\n用户已学过的最近单词（用于"大串联"）：\n${lines}\n\n请在 chain 字段中把这些单词编织进一个连贯的句子。`;
+  }
+
   return { system, user };
 }

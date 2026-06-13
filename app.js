@@ -9,6 +9,7 @@ import { buildMessages } from './src/promptBuilder.js';
 import { complete } from './src/llmClient.js';
 import { renderCard } from './src/cardRenderer.js';
 import { bindSettingsToggle } from './src/settingsPanel.js';
+import { recentN } from './src/historyIndex.js';
 
 function init() {
   bindSettingsToggle('settings-btn', 'settings-close', 'settings-panel');
@@ -42,10 +43,12 @@ async function handleLookup(word) {
   input.disabled = true;
 
   const settings = getSettings();
+  const allWords = getWords();
+  const history = recentN(allWords, settings.historySize ?? 30);
   const { system, user } = buildMessages({
     word,
-    history: [],
-    isFirstWord: getWords().length === 0,
+    history,
+    isFirstWord: allWords.length === 0,
     settings,
   });
 
