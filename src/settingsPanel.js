@@ -113,8 +113,8 @@ function buildVoiceSelect(currentValue) {
   };
 
   populate();
-  if (typeof speechSynthesis !== 'undefined') {
-    speechSynthesis.addEventListener?.('voiceschanged', populate);
+  if (typeof speechSynthesis !== 'undefined' && typeof speechSynthesis.addEventListener === 'function') {
+    try { speechSynthesis.addEventListener('voiceschanged', populate); } catch {}
   }
   return sel;
 }
@@ -126,8 +126,12 @@ export function bindSettingsToggle(openBtnId, closeBtnId, panelId) {
   const container = panel.querySelector('#settings-fields');
 
   const open = () => {
-    renderSettings(container);
     panel.classList.remove('hidden');
+    try {
+      renderSettings(container);
+    } catch (err) {
+      container.innerHTML = `<pre style="color:red;white-space:pre-wrap">settings render error: ${String(err?.message ?? err)}</pre>`;
+    }
   };
   const close = () => panel.classList.add('hidden');
 
