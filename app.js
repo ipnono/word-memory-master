@@ -82,7 +82,7 @@ function openCard(entry) {
   const cardArea = document.getElementById('card-area');
   cardArea.innerHTML = '';
   cardArea.classList.remove('hidden');
-  cardArea.appendChild(renderCard(entry.card));
+  cardArea.appendChild(renderCard(entry.card, entry));
 }
 
 function isToday(ts) {

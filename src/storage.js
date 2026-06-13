@@ -57,3 +57,11 @@ export function deleteWord(id) {
   getLS().setItem(WORDS_KEY, JSON.stringify(words));
   return words;
 }
+
+export function updateWordRating(id, rating) {
+  const words = getWords().map(w =>
+    w.id === id ? { ...w, rating, ratedAt: Date.now() } : w
+  );
+  getLS().setItem(WORDS_KEY, JSON.stringify(words));
+  return words;
+}

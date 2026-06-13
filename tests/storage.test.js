@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { getSettings, setSettings, getWords, addWord, deleteWord } from '../src/storage.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { getSettings, setSettings, getWords, addWord, deleteWord, updateWordRating } from '../src/storage.js';
 
 // Minimal localStorage stub — Vitest runs in Node, where localStorage
 // does not exist by default. We attach a fresh mock to globalThis
@@ -88,6 +88,36 @@ describe('storage', () => {
       const e1 = { id: 'a', addedAt: 1, card: { word: 'abandon' } };
       addWord(e1);
       deleteWord('nonexistent');
+      expect(getWords()).toEqual([e1]);
+    });
+  });
+
+  describe('updateWordRating (slice #6)', () => {
+    it('sets rating + ratedAt on the matching entry', () => {
+      const e1 = { id: 'a', addedAt: 1, card: { word: 'abandon' } };
+      addWord(e1);
+      const now = 1700000000000;
+      vi.setSystemTime(new Date(now));
+      updateWordRating('a', 'knew');
+      const updated = getWords().find(w => w.id === 'a');
+      expect(updated.rating).toBe('knew');
+      expect(updated.ratedAt).toBe(now);
+    });
+
+    it('preserves other fields on the entry', () => {
+      const e1 = { id: 'a', addedAt: 1, card: { word: 'abandon' } };
+      addWord(e1);
+      updateWordRating('a', 'fuzzy');
+      const updated = getWords().find(w => w.id === 'a');
+      expect(updated.id).toBe('a');
+      expect(updated.addedAt).toBe(1);
+      expect(updated.card.word).toBe('abandon');
+    });
+
+    it('is a no-op when id does not match', () => {
+      const e1 = { id: 'a', addedAt: 1, card: { word: 'abandon' } };
+      addWord(e1);
+      updateWordRating('nonexistent', 'didnt');
       expect(getWords()).toEqual([e1]);
     });
   });
