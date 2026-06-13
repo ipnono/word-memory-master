@@ -158,4 +158,39 @@ describe('llmClient', () => {
       expect(result.raw).toBe('still bad');
     });
   });
+
+  describe('proxy mode (slice #10)', () => {
+    const VALID_CARD = { word: 'abandon', phonetic: '/x/', coreMeaning: '放弃' };
+
+    beforeEach(() => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true, status: 200,
+        json: async () => ({ choices: [{ message: { content: JSON.stringify(VALID_CARD) } }] }),
+      });
+    });
+
+    it('routes to proxyUrl when useProxy is true', async () => {
+      const settings = {
+        apiBaseUrl: 'https://api.example.com/v1',
+        proxyUrl:   'http://localhost:8787/v1',
+        useProxy:   true,
+        model: 'm',
+      };
+      await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      const [url] = globalThis.fetch.mock.calls[0];
+      expect(url).toBe('http://localhost:8787/v1/chat/completions');
+    });
+
+    it('routes to apiBaseUrl when useProxy is false', async () => {
+      const settings = {
+        apiBaseUrl: 'https://api.example.com/v1',
+        proxyUrl:   'http://localhost:8787/v1',
+        useProxy:   false,
+        model: 'm',
+      };
+      await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      const [url] = globalThis.fetch.mock.calls[0];
+      expect(url).toBe('https://api.example.com/v1/chat/completions');
+    });
+  });
 });

@@ -15,8 +15,9 @@ function stripMarkdownFences(text) {
 }
 
 function buildRequest({ systemMsg, userMsg, settings }) {
+  const base = settings.useProxy ? settings.proxyUrl : settings.apiBaseUrl;
   return {
-    url: `${settings.apiBaseUrl}/chat/completions`,
+    url: `${base}/chat/completions`,
     init: {
       method: 'POST',
       headers: {

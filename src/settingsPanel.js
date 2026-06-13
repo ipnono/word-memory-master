@@ -1,10 +1,11 @@
 // Settings panel UI. Renders editable fields and persists via storage.
 //
-// Slice #1: 5 fields (apiBaseUrl, apiKey, model, promptTemplate, historySize).
-// Slice #5: + voice, rate, pitch (TTS).
-// Slice #10: + useProxy, proxyUrl, export/import buttons.
+// Slice #1: 5 fields.
+// Slice #5: + voice, rate, pitch.
+// Slice #10: + useProxy, proxyUrl, Export/Import buttons.
 
 import { getSettings, setSettings, DEFAULT_SETTINGS } from './storage.js';
+import { exportAll, importAll } from './exporter.js';
 
 const FIELDS = [
   { key: 'apiBaseUrl',     label: 'API Base URL',        type: 'text' },
@@ -15,6 +16,8 @@ const FIELDS = [
   { key: 'voice',          label: 'TTS Voice',           type: 'voice' },
   { key: 'rate',           label: 'TTS Rate',            type: 'range', min: 0.5, max: 2, step: 0.1 },
   { key: 'pitch',          label: 'TTS Pitch',           type: 'range', min: 0.5, max: 2, step: 0.1 },
+  { key: 'useProxy',       label: '使用本地代理',         type: 'checkbox' },
+  { key: 'proxyUrl',       label: '代理地址',             type: 'text' },
 ];
 
 export function renderSettings(container) {
@@ -44,15 +47,18 @@ function buildFieldRow(field, value) {
     input.rows = 8;
     input.value = value ?? '';
     input.addEventListener('change', () => setSettings({ [field.key]: input.value }));
+  } else if (field.type === 'checkbox') {
+    input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = Boolean(value);
+    input.addEventListener('change', () => setSettings({ [field.key]: input.checked }));
   } else if (field.type === 'voice') {
     input = buildVoiceSelect(value);
     input.addEventListener('change', () => setSettings({ [field.key]: input.value }));
   } else if (field.type === 'range') {
     input = document.createElement('input');
     input.type = 'range';
-    input.min = field.min;
-    input.max = field.max;
-    input.step = field.step;
+    input.min = field.min; input.max = field.max; input.step = field.step;
     input.value = value ?? 1.0;
     input.addEventListener('change', () => setSettings({ [field.key]: Number(input.value) }));
   } else {
@@ -73,7 +79,11 @@ function buildFieldRow(field, value) {
   resetBtn.textContent = '恢复默认';
   resetBtn.addEventListener('click', () => {
     const def = DEFAULT_SETTINGS[field.key];
-    input.value = def ?? '';
+    if (field.type === 'checkbox') {
+      input.checked = Boolean(def);
+    } else {
+      input.value = def ?? '';
+    }
     setSettings({ [field.key]: def });
   });
   control.appendChild(resetBtn);
@@ -84,14 +94,12 @@ function buildFieldRow(field, value) {
 
 function buildVoiceSelect(currentValue) {
   const sel = document.createElement('select');
-  // Default option: en-US lang fallback
   const def = document.createElement('option');
   def.value = '';
   def.textContent = '默认 (en-US)';
   sel.appendChild(def);
 
   const populate = () => {
-    // Remove voice options but keep the default
     while (sel.options.length > 1) sel.remove(1);
     if (typeof speechSynthesis === 'undefined') return;
     const voices = speechSynthesis.getVoices() ?? [];
@@ -128,4 +136,41 @@ export function bindSettingsToggle(openBtnId, closeBtnId, panelId) {
   panel.addEventListener('click', (e) => {
     if (e.target === panel) close();
   });
+
+  // Wire Export/Import buttons (defined in index.html footer).
+  const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn');
+  const importFile = document.getElementById('import-file');
+  if (exportBtn) {
+    exportBtn.onclick = () => {
+      const data = exportAll();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `word-memory-master-${new Date(data.exportedAt).toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+  }
+  if (importBtn && importFile) {
+    importBtn.onclick = () => importFile.click();
+    importFile.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const result = importAll(data);
+        if (!result.ok) {
+          alert('导入失败：' + result.errors.join(', '));
+          return;
+        }
+        alert('导入成功，页面将重新加载。');
+        location.reload();
+      } catch (err) {
+        alert('导入失败：文件不是有效的 JSON。');
+      }
+    };
+  }
 }
