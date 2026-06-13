@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Memory Master</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>📚 Word Memory Master</h1>
+    <button id="settings-btn" class="icon-btn" title="设置">⚙</button>
+  </header>
+
+  <main>
+    <section class="lookup">
+      <input id="word-input" type="text" placeholder="输入英文单词，回车查询…" autocomplete="off" autofocus>
+      <div id="loading" class="loading hidden">
+        <span class="spinner"></span>
+        <span>生成中…</span>
+      </div>
+    </section>
+
+    <section id="card-area" class="card-area hidden"></section>
+
+    <section id="error-area" class="error-area hidden">
+      <p id="error-message"></p>
+      <button id="retry-btn">重试</button>
+    </section>
+
+    <section id="today-list" class="today-list hidden">
+      <h2>今天学的</h2>
+      <ul id="today-list-items"></ul>
+    </section>
+  </main>
+
+  <!-- Settings panel (overlay) -->
+  <aside id="settings-panel" class="settings-panel hidden">
+    <div class="settings-content">
+      <div class="settings-header">
+        <h2>设置</h2>
+        <button id="settings-close" class="icon-btn" title="关闭">✕</button>
+      </div>
+
+      <div class="settings-body" id="settings-fields">
+        <!-- Fields rendered by settingsPanel.js -->
+      </div>
+
+      <div class="settings-footer">
+        <button id="export-btn">导出全部</button>
+        <button id="import-btn">导入</button>
+        <input type="file" id="import-file" accept="application/json" hidden>
+      </div>
+    </div>
+  </aside>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
