@@ -5,6 +5,7 @@
   "description": "Local web app for memorizing English vocabulary via LLM-generated structured cards",
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -15,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "vite": "^7.0.0",
     "vitest": "^4.1.8"
   }
 }
