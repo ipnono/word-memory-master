@@ -9,10 +9,11 @@ import { buildMessages } from './src/promptBuilder.js';
 import { complete } from './src/llmClient.js';
 import { renderCard } from './src/cardRenderer.js';
 import { bindSettingsToggle } from './src/settingsPanel.js';
-import { recentN } from './src/historyIndex.js';
+import { recentN, groupByDate, filterByQuery } from './src/historyIndex.js';
 
 function init() {
   bindSettingsToggle('settings-btn', 'settings-close', 'settings-panel');
+  bindHistoryToggle('history-btn', 'history-close', 'history-view', 'history-search', 'history-groups');
 
   const form = document.querySelector('.lookup');
   form.addEventListener('submit', (e) => {
@@ -140,4 +141,68 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+function bindHistoryToggle(openBtnId, closeBtnId, viewId, searchId, groupsId) {
+  const openBtn = document.getElementById(openBtnId);
+  const closeBtn = document.getElementById(closeBtnId);
+  const view = document.getElementById(viewId);
+  const search = document.getElementById(searchId);
+  const groupsEl = document.getElementById(groupsId);
+
+  const render = () => {
+    const q = search.value;
+    const all = getWords();
+    const filtered = filterByQuery(all, q);
+    const groups = groupByDate(filtered);
+    renderGroups(groupsEl, groups);
+  };
+
+  const open = () => { render(); view.classList.remove('hidden'); };
+  const close = () => view.classList.add('hidden');
+
+  openBtn.addEventListener('click', open);
+  closeBtn.addEventListener('click', close);
+  search.addEventListener('input', render);
+}
+
+function renderGroups(container, groups) {
+  container.innerHTML = '';
+  const labels = [
+    ['Today',     '今天'],
+    ['Yesterday', '昨天'],
+    ['ThisWeek',  '本周'],
+    ['Earlier',   '更早'],
+  ];
+  for (const [key, label] of labels) {
+    const items = groups[key];
+    if (!items.length) continue;
+    const section = document.createElement('div');
+    section.className = 'history-group';
+    section.appendChild(Object.assign(document.createElement('h3'), { textContent: label }));
+    const ul = document.createElement('ul');
+    for (const entry of items) {
+      const li = document.createElement('li');
+      const span = document.createElement('span');
+      span.textContent = entry.card.word;
+      span.addEventListener('click', () => openCard(entry));
+      li.appendChild(span);
+      const del = document.createElement('button');
+      del.className = 'delete-btn';
+      del.textContent = '🗑';
+      del.title = `删除 "${entry.card.word}"`;
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`删除 "${entry.card.word}"?`)) {
+          deleteWord(entry.id);
+          renderGroups(container, groupByDate(filterByQuery(getWords(), document.getElementById('history-search').value)));
+          renderTodayList();
+        }
+      });
+      li.appendChild(del);
+      ul.appendChild(li);
+    }
+    section.appendChild(ul);
+    container.appendChild(section);
+  }
 }

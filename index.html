@@ -9,7 +9,10 @@
 <body>
   <header class="app-header">
     <h1>📚 Word Memory Master</h1>
-    <button id="settings-btn" class="icon-btn" title="设置">⚙</button>
+    <div class="header-actions">
+      <button id="history-btn" class="icon-btn" title="历史">📖</button>
+      <button id="settings-btn" class="icon-btn" title="设置">⚙</button>
+    </div>
   </header>
 
   <main>
@@ -33,6 +36,16 @@
       <ul id="today-list-items"></ul>
     </section>
   </main>
+
+  <!-- History view -->
+  <section id="history-view" class="history-view hidden">
+    <div class="history-header">
+      <h2>历史</h2>
+      <button id="history-close" class="icon-btn" title="关闭">✕</button>
+    </div>
+    <input id="history-search" type="text" placeholder="搜索单词…" autocomplete="off">
+    <div id="history-groups"></div>
+  </section>
 
   <!-- Settings panel (overlay) -->
   <aside id="settings-panel" class="settings-panel hidden">
