@@ -118,4 +118,44 @@ describe('llmClient', () => {
       expect(typeof result.raw).toBe('string');
     });
   });
+
+  describe('retry on JSON parse failure (slice #9)', () => {
+    function mockSequence(responses) {
+      let i = 0;
+      globalThis.fetch = vi.fn().mockImplementation(async () => {
+        const content = responses[i++];
+        return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content } }] }) };
+      });
+    }
+    const STRICT_SUFFIX = /仅返回原始 JSON|无 markdown|不要.*代码块/;
+    const VALID_CARD = { word: 'abandon', phonetic: '/x/', coreMeaning: '放弃' };
+
+    it('returns ok on first valid response without retrying', async () => {
+      mockSequence([JSON.stringify(VALID_CARD)]);
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(true);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries once with stricter suffix when first response fails to parse', async () => {
+      mockSequence(['not json at all', JSON.stringify(VALID_CARD)]);
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+      expect(result.ok).toBe(true);
+      const [, init2] = globalThis.fetch.mock.calls[1];
+      const body2 = JSON.parse(init2.body);
+      expect(body2.messages[1].content).toMatch(STRICT_SUFFIX);
+    });
+
+    it('returns {ok:false, raw} when both attempts fail', async () => {
+      mockSequence(['bad', 'still bad']);
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+      expect(result.ok).toBe(false);
+      expect(result.raw).toBe('still bad');
+    });
+  });
 });
