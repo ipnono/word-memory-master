@@ -1,15 +1,17 @@
 // App entry. Wires DOM events to the modules.
 //
-// Slice #2: lookup → LLM → raw text.
-// Slice #3: JSON parse + structured card render.
-// Slice #4: auto-save validated card + today's words list.
+// Layout: 3-column (left = selected-day word list, center = lookup + card,
+// right = date sidebar). Adding a word snaps selection to today; deleting
+// the last word of a date removes that date from the sidebar automatically.
 
-import { getSettings, getWords, addWord, deleteWord } from './src/storage.js';
+import { getSettings, getWords, addWord, deleteWord, getDateKey } from './src/storage.js';
 import { buildMessages } from './src/promptBuilder.js';
 import { complete } from './src/llmClient.js';
 import { renderCard } from './src/cardRenderer.js';
 import { bindSettingsToggle } from './src/settingsPanel.js';
 import { recentN, groupByDate, filterByQuery } from './src/historyIndex.js';
+
+let selectedDateKey = getDateKey(Date.now());
 
 function init() {
   bindSettingsToggle('settings-btn', 'settings-close', 'settings-panel');
@@ -23,7 +25,8 @@ function init() {
     handleLookup(word);
   });
 
-  renderTodayList();
+  ensureSelectionValid();
+  renderLayout();
 }
 
 async function handleLookup(word) {
@@ -73,7 +76,8 @@ async function handleLookup(word) {
     };
     addWord(entry);
     openCard(entry);
-    renderTodayList();
+    selectedDateKey = getDateKey(Date.now());
+    renderLayout({ scrollToSelected: true });
   } else if (result.raw != null) {
     errorArea.classList.remove('hidden');
     errorMessage.textContent = 'LLM 返回的内容无法解析为预期的 JSON 结构。原始内容：';
@@ -95,28 +99,95 @@ function openCard(entry) {
   cardArea.appendChild(renderCard(entry.card, entry));
 }
 
-function isToday(ts) {
-  const d = new Date(ts);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear()
-      && d.getMonth() === now.getMonth()
-      && d.getDate() === now.getDate();
+function ensureSelectionValid() {
+  const all = getWords();
+  if (all.some(w => getDateKey(w.addedAt) === selectedDateKey)) return;
+  const groups = groupByDate(all);
+  for (const k of ['Today', 'Yesterday', 'ThisWeek', 'Earlier']) {
+    if (groups[k].length) {
+      selectedDateKey = getDateKey(groups[k][0].addedAt);
+      return;
+    }
+  }
+  selectedDateKey = getDateKey(Date.now());
 }
 
-function renderTodayList() {
-  const list = document.getElementById('today-list');
-  const ul = document.getElementById('today-list-items');
+function renderLayout({ scrollToSelected = false } = {}) {
+  renderDateSidebar({ scrollToSelected });
+  renderDayList();
+}
+
+function renderDateSidebar({ scrollToSelected = false } = {}) {
+  const ul = document.getElementById('date-list');
+  ul.innerHTML = '';
+  const all = getWords();
+  const groups = groupByDate(all);
+
+  const sections = [
+    { key: 'Today',     label: '今天' },
+    { key: 'Yesterday', label: '昨天' },
+    { key: 'ThisWeek',  label: '本周' },
+    { key: 'Earlier',   label: '更早' },
+  ];
+
+  let selectedLi = null;
+  for (const { key, label } of sections) {
+    if (!groups[key].length) continue;
+
+    const groupLabel = document.createElement('li');
+    groupLabel.className = 'date-group-label';
+    groupLabel.textContent = label;
+    ul.appendChild(groupLabel);
+
+    for (const entry of groups[key]) {
+      const dk = getDateKey(entry.addedAt);
+      const li = document.createElement('li');
+      if (dk === selectedDateKey) {
+        li.classList.add('selected');
+        selectedLi = li;
+      }
+
+      const dateText = document.createElement('span');
+      dateText.textContent = formatDateLabel(dk);
+      li.appendChild(dateText);
+
+      const count = document.createElement('span');
+      count.className = 'date-count';
+      count.textContent = countWordsForDate(all, dk);
+      li.appendChild(count);
+
+      li.addEventListener('click', () => {
+        if (selectedDateKey === dk) return;
+        selectedDateKey = dk;
+        renderLayout();
+      });
+      ul.appendChild(li);
+    }
+  }
+
+  if (selectedLi && scrollToSelected) {
+    selectedLi.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function renderDayList() {
+  const titleEl = document.getElementById('day-list-title');
+  const ul = document.getElementById('day-list-items');
+  const emptyEl = document.getElementById('day-list-empty');
   ul.innerHTML = '';
 
-  const todays = getWords().filter(w => isToday(w.addedAt));
+  titleEl.textContent = formatDateTitle(selectedDateKey);
+
+  const all = getWords();
+  const todays = all
+    .filter(w => getDateKey(w.addedAt) === selectedDateKey)
+    .sort((a, b) => b.addedAt - a.addedAt);
+
   if (todays.length === 0) {
-    list.classList.add('hidden');
+    emptyEl.classList.remove('hidden');
     return;
   }
-  list.classList.remove('hidden');
-
-  // Sort newest first
-  todays.sort((a, b) => b.addedAt - a.addedAt);
+  emptyEl.classList.add('hidden');
 
   for (const entry of todays) {
     const li = document.createElement('li');
@@ -134,13 +205,39 @@ function renderTodayList() {
       e.stopPropagation();
       if (confirm(`删除 "${entry.card.word}"?`)) {
         deleteWord(entry.id);
-        renderTodayList();
+        const stillHas = getWords().some(w => getDateKey(w.addedAt) === selectedDateKey);
+        if (!stillHas) {
+          ensureSelectionValid();
+        }
+        renderLayout({ scrollToSelected: true });
       }
     });
     li.appendChild(delBtn);
 
     ul.appendChild(li);
   }
+}
+
+function countWordsForDate(words, dateKey) {
+  let n = 0;
+  for (const w of words) if (getDateKey(w.addedAt) === dateKey) n++;
+  return n;
+}
+
+function formatDateLabel(dateKey) {
+  const today = getDateKey(Date.now());
+  const yest = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return getDateKey(d.getTime()); })();
+  if (dateKey === today) return '今天';
+  if (dateKey === yest)  return '昨天';
+  return dateKey;
+}
+
+function formatDateTitle(dateKey) {
+  const today = getDateKey(Date.now());
+  const yest = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return getDateKey(d.getTime()); })();
+  if (dateKey === today) return '今天';
+  if (dateKey === yest)  return '昨天';
+  return dateKey;
 }
 
 if (document.readyState === 'loading') {
@@ -191,7 +288,12 @@ function renderGroups(container, groups) {
       const li = document.createElement('li');
       const span = document.createElement('span');
       span.textContent = entry.card.word;
-      span.addEventListener('click', () => openCard(entry));
+      span.addEventListener('click', () => {
+        selectedDateKey = getDateKey(entry.addedAt);
+        renderLayout({ scrollToSelected: true });
+        document.getElementById('history-view').classList.add('hidden');
+        openCard(entry);
+      });
       li.appendChild(span);
       const del = document.createElement('button');
       del.className = 'delete-btn';
@@ -201,8 +303,10 @@ function renderGroups(container, groups) {
         e.stopPropagation();
         if (confirm(`删除 "${entry.card.word}"?`)) {
           deleteWord(entry.id);
-          renderGroups(container, groupByDate(filterByQuery(getWords(), document.getElementById('history-search').value)));
-          renderLayout();
+          const stillHas = getWords().some(w => getDateKey(w.addedAt) === selectedDateKey);
+          if (!stillHas) ensureSelectionValid();
+          renderLayout({ scrollToSelected: true });
+          render();
         }
       });
       li.appendChild(del);

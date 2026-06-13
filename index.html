@@ -16,27 +16,30 @@
   </header>
 
   <main>
-    <form class="lookup">
-      <input id="word-input" type="text" placeholder="输入英文单词，回车查询…" autocomplete="off" autofocus>
-      <div id="loading" class="loading hidden">
-        <span class="spinner"></span>
-        <span>生成中…</span>
-      </div>
-    </form>
-
-    <section id="error-area" class="error-area hidden">
-      <p id="error-message"></p>
-      <button id="retry-btn">重试</button>
-    </section>
-
-    <section id="card-area" class="card-area hidden"></section>
-
     <div class="layout">
       <section class="day-list-panel">
         <h2 id="day-list-title"></h2>
         <ul id="day-list-items"></ul>
         <p id="day-list-empty" class="muted hidden">这天还没有单词。</p>
       </section>
+
+      <div class="center-col">
+        <form class="lookup">
+          <input id="word-input" type="text" placeholder="输入英文单词，回车查询…" autocomplete="off" autofocus>
+          <div id="loading" class="loading hidden">
+            <span class="spinner"></span>
+            <span>生成中…</span>
+          </div>
+        </form>
+
+        <section id="error-area" class="error-area hidden">
+          <p id="error-message"></p>
+          <button id="retry-btn">重试</button>
+        </section>
+
+        <section id="card-area" class="card-area hidden"></section>
+      </div>
+
       <aside class="date-sidebar">
         <h2>日期</h2>
         <ul id="date-list"></ul>
