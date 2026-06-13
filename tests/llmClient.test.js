@@ -1,0 +1,76 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { complete } from '../src/llmClient.js';
+
+describe('llmClient', () => {
+  describe('complete (slice #2 — basic POST, no retry, no JSON parsing)', () => {
+    let fetchSpy;
+
+    beforeEach(() => {
+      fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: 'OK' } }],
+        }),
+      });
+      globalThis.fetch = fetchSpy;
+    });
+
+    afterEach(() => {
+      delete globalThis.fetch;
+    });
+
+    it('POSTs to {apiBaseUrl}/chat/completions', async () => {
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      const [calledUrl] = fetchSpy.mock.calls[0];
+      expect(calledUrl).toBe('https://api.example.com/v1/chat/completions');
+    });
+
+    it('sends an Authorization Bearer header with the API key', async () => {
+      const settings = {
+        apiBaseUrl: 'https://api.example.com/v1',
+        model: 'm',
+        apiKey: 'sk-test-1234',
+      };
+      await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      const [, init] = fetchSpy.mock.calls[0];
+      expect(init.headers.Authorization).toBe('Bearer sk-test-1234');
+    });
+
+    it('sends messages in order: system, then user', async () => {
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      await complete({ systemMsg: 'SYS-CONTENT', userMsg: 'USER-CONTENT', settings });
+      const [, init] = fetchSpy.mock.calls[0];
+      const body = JSON.parse(init.body);
+      expect(body.model).toBe('m');
+      expect(body.messages).toEqual([
+        { role: 'system', content: 'SYS-CONTENT' },
+        { role: 'user', content: 'USER-CONTENT' },
+      ]);
+    });
+  });
+
+  describe('error handling', () => {
+    it('returns {ok: false, error} when fetch throws (network failure)', async () => {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('NetworkError'));
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain('NetworkError');
+    });
+
+    it('returns {ok: false, error} when response is non-2xx', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({ error: { message: 'invalid api key' } }),
+      });
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(false);
+      expect(result.error).toMatch(/401/);
+    });
+  });
+});
