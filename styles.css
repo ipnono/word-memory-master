@@ -93,6 +93,18 @@ main {
 .card .card-example-en { margin: 4px 0; font-weight: 500; }
 .card .card-example-zh { margin: 4px 0; color: var(--muted); font-size: 14px; }
 .card .card-chain { background: rgba(79, 70, 229, 0.06); padding: 12px; border-radius: 4px; border-left: 3px solid var(--accent); }
+.card .audio-btn {
+  background: none; border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: 4px; cursor: pointer;
+  font-size: 14px; margin-left: 8px;
+}
+.card .audio-btn:hover { border-color: var(--accent); background: rgba(79, 70, 229, 0.08); }
+.card .card-title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.card .card-phonetic-wrap { display: inline-flex; align-items: center; color: var(--muted); }
+.card .card-example-en-row { display: flex; align-items: center; gap: 6px; }
+
+.field-row input[type="range"] { flex: 1; }
+.field-row select { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; background: white; }
 
 /* Error */
 .error-area {
