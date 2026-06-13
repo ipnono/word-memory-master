@@ -43,23 +43,29 @@ async function handleLookup(word) {
   loading.classList.remove('hidden');
   input.disabled = true;
 
-  const settings = getSettings();
-  const allWords = getWords();
-  const history = recentN(allWords, settings.historySize ?? 30);
-  const { system, user } = buildMessages({
-    word,
-    history,
-    isFirstWord: allWords.length === 0,
-    settings,
-  });
-
-  const result = await complete({ systemMsg: system, userMsg: user, settings });
+  let result;
+  try {
+    const settings = getSettings();
+    const allWords = getWords();
+    const history = recentN(allWords, settings.historySize ?? 30);
+    const { system, user } = buildMessages({
+      word,
+      history,
+      isFirstWord: allWords.length === 0,
+      settings,
+    });
+    console.log('[wmm] request', { url: settings.apiBaseUrl, model: settings.model, useProxy: settings.useProxy });
+    result = await complete({ systemMsg: system, userMsg: user, settings });
+    console.log('[wmm] result', result);
+  } catch (err) {
+    console.error('[wmm] handleLookup threw', err);
+    result = { ok: false, error: `JS error: ${err?.message ?? err}` };
+  }
 
   loading.classList.add('hidden');
   input.disabled = false;
 
   if (result.ok) {
-    // Auto-save on success.
     const entry = {
       id: crypto.randomUUID(),
       addedAt: Date.now(),
@@ -77,7 +83,7 @@ async function handleLookup(word) {
     retryBtn.onclick = () => { errorArea.querySelectorAll('pre').forEach(p => p.remove()); handleLookup(word); };
   } else {
     errorArea.classList.remove('hidden');
-    errorMessage.textContent = result.error;
+    errorMessage.textContent = result.error ?? '未知错误';
     retryBtn.onclick = () => handleLookup(word);
   }
 }
