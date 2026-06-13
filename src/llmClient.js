@@ -14,6 +14,27 @@ function stripMarkdownFences(text) {
   return fenced ? fenced[1].trim() : text.trim();
 }
 
+function extractJson(text) {
+  // Order: fenced ```json``` block > balanced {...} object > raw.
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) return fenced[1].trim();
+  // Strip <think>...</think> blocks (DeepSeek / MiniMax reasoning models)
+  const noThink = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  // Find the outermost { ... } by brace counting
+  const first = noThink.indexOf('{');
+  if (first === -1) return noThink;
+  let depth = 0;
+  for (let i = first; i < noThink.length; i++) {
+    const ch = noThink[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return noThink.slice(first, i + 1);
+    }
+  }
+  return noThink;
+}
+
 function buildRequest({ systemMsg, userMsg, settings }) {
   const base = settings.useProxy ? settings.proxyUrl : settings.apiBaseUrl;
   return {
@@ -48,7 +69,7 @@ async function postAndExtract({ systemMsg, userMsg, settings }) {
   }
   const data = await res.json();
   const text = data?.choices?.[0]?.message?.content ?? '';
-  const stripped = stripMarkdownFences(text);
+  const stripped = extractJson(text);
   let parsed;
   try {
     parsed = JSON.parse(stripped);

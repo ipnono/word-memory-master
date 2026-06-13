@@ -157,6 +157,26 @@ describe('llmClient', () => {
       expect(result.ok).toBe(false);
       expect(result.raw).toBe('still bad');
     });
+
+    it('strips <think>...</think> reasoning blocks before parsing', async () => {
+      const card = { word: 'good', phonetic: '/g/', coreMeaning: '好' };
+      const wrapped = '<think>\nreasoning here\n</think>\n' + JSON.stringify(card);
+      mockSequence([wrapped]);
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(true);
+      expect(result.card.word).toBe('good');
+    });
+
+    it('extracts JSON object from text with extra prose around it', async () => {
+      const card = { word: 'good', phonetic: '/g/', coreMeaning: '好' };
+      const wrapped = `Here is the answer:\n${JSON.stringify(card)}\nHope it helps!`;
+      mockSequence([wrapped]);
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(true);
+      expect(result.card.word).toBe('good');
+    });
   });
 
   describe('proxy mode (slice #10)', () => {
