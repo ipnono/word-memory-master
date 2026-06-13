@@ -1,12 +1,12 @@
 // App entry. Wires DOM events to the modules.
 //
 // Slice #2: lookup word → build messages → call LLM → render raw text.
-// Slice #3 will parse JSON + render structured card.
-// Slice #4 will auto-save to history.
+// Slice #3: parse JSON + render structured card.
 
 import { getSettings } from './src/storage.js';
 import { buildMessages } from './src/promptBuilder.js';
 import { complete } from './src/llmClient.js';
+import { renderCard } from './src/cardRenderer.js';
 import { bindSettingsToggle } from './src/settingsPanel.js';
 
 function init() {
@@ -29,13 +29,11 @@ async function handleLookup(word) {
   const errorMessage = document.getElementById('error-message');
   const retryBtn = document.getElementById('retry-btn');
 
-  // Reset UI state
   cardArea.classList.add('hidden');
   errorArea.classList.add('hidden');
   cardArea.innerHTML = '';
   errorMessage.textContent = '';
 
-  // Show loading, disable input
   loading.classList.remove('hidden');
   input.disabled = true;
 
@@ -49,16 +47,20 @@ async function handleLookup(word) {
 
   const result = await complete({ systemMsg: system, userMsg: user, settings });
 
-  // Hide loading, re-enable input
   loading.classList.add('hidden');
   input.disabled = false;
 
   if (result.ok) {
-    // Slice #3 will replace this with structured rendering + JSON parsing.
     cardArea.classList.remove('hidden');
+    cardArea.appendChild(renderCard(result.card));
+  } else if (result.raw != null) {
+    // Parse/validation failed — show raw text + retry
+    errorArea.classList.remove('hidden');
+    errorMessage.textContent = 'LLM 返回的内容无法解析为预期的 JSON 结构。原始内容：';
     const pre = document.createElement('pre');
-    pre.textContent = result.text;
-    cardArea.appendChild(pre);
+    pre.textContent = result.raw;
+    errorArea.appendChild(pre);
+    retryBtn.onclick = () => { errorArea.querySelectorAll('pre').forEach(p => p.remove()); handleLookup(word); };
   } else {
     errorArea.classList.remove('hidden');
     errorMessage.textContent = result.error;

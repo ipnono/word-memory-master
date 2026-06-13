@@ -73,4 +73,49 @@ describe('llmClient', () => {
       expect(result.error).toMatch(/401/);
     });
   });
+
+  describe('JSON parsing (slice #3)', () => {
+    function mockJsonResponse(content) {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content } }] }),
+      });
+    }
+
+    it('returns {ok: true, card} when response is valid JSON', async () => {
+      const card = { word: 'abandon', phonetic: '/x/', coreMeaning: '放弃' };
+      mockJsonResponse(JSON.stringify(card));
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(true);
+      expect(result.card.word).toBe('abandon');
+    });
+
+    it('strips ```json``` markdown fences before parsing', async () => {
+      const card = { word: 'ban', phonetic: '/b/', coreMeaning: '禁止' };
+      mockJsonResponse('```json\n' + JSON.stringify(card) + '\n```');
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(true);
+      expect(result.card.word).toBe('ban');
+    });
+
+    it('returns {ok: false, raw} when response is not JSON', async () => {
+      mockJsonResponse('📌 abandon /əˈbændən/ - 难度评级: B2\n...');
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(false);
+      expect(result.raw).toContain('abandon');
+    });
+
+    it('returns {ok: false, raw} when JSON parses but fails schema validation', async () => {
+      // missing word/phonetic/coreMeaning
+      mockJsonResponse(JSON.stringify({ word: '', phonetic: '', coreMeaning: '' }));
+      const settings = { apiBaseUrl: 'https://api.example.com/v1', model: 'm' };
+      const result = await complete({ systemMsg: 'S', userMsg: 'U', settings });
+      expect(result.ok).toBe(false);
+      expect(typeof result.raw).toBe('string');
+    });
+  });
 });

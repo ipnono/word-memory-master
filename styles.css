@@ -82,6 +82,18 @@ main {
 }
 .card-area h2 { margin-top: 0; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
+.card .card-section { margin-bottom: 20px; }
+.card .card-section h2 { font-size: 16px; color: var(--muted); margin: 0 0 8px; text-transform: none; letter-spacing: 0; }
+.card .card-word { font-size: 32px; margin: 0 0 4px; }
+.card .card-meta { display: flex; gap: 12px; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.card .card-cefr { background: var(--bg); padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+.card .card-core { font-size: 18px; margin: 8px 0 0; }
+.card .card-example { margin-bottom: 10px; padding: 10px; background: var(--bg); border-radius: 4px; }
+.card .card-example-tag { display: inline-block; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+.card .card-example-en { margin: 4px 0; font-weight: 500; }
+.card .card-example-zh { margin: 4px 0; color: var(--muted); font-size: 14px; }
+.card .card-chain { background: rgba(79, 70, 229, 0.06); padding: 12px; border-radius: 4px; border-left: 3px solid var(--accent); }
+
 /* Error */
 .error-area {
   background: var(--error-bg); color: var(--error-text);
